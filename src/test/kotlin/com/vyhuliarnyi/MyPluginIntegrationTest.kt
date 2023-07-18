@@ -27,40 +27,33 @@ class MyPluginIntegrationTest {
 
     @Test
     fun `plugin configures repositories`() {
-        val repoId = "myRepo"
-        val repoUrl = "http://localhost"
-        val usernameProp = "${repoId}Username"
-        val passwordProp = "${repoId}Password"
-        val username = "user"
-        val password = "pass"
-
         propertiesFile.writeText(
             """
-        $usernameProp=$username
-        $passwordProp=$password
+        ${"myRepoUsername"}=${"user"}
+        ${"myRepoPassword"}=${"pass"}
     """
         )
 
         settingsFile.writeText("rootProject.name = \"my-plugin-test\"")
         buildFile.writeText(
             """
-        plugins {
-            id("project-setup-gradle-plugin")
+plugins {
+    id("project-setup-gradle-plugin")
+}
+
+myProject {
+    repos.set(mapOf("myRepo" to "http://localhost"))
+}
+
+tasks.create("printRepos") {
+    doLast {
+        repositories.forEach {
+            if (it is MavenArtifactRepository) {
+                println("Repo: ${'$'}{it.name}, URL: ${'$'}{it.url}")
+            }
         }
-        
-        myProject {
-            repos.set(mapOf("$repoId" to "$repoUrl"))
-        }
-        
-          tasks.create("printRepos") {
-              doLast {
-                  repositories.forEach {
-                      if (it is MavenArtifactRepository) {
-                          println("Repo: ${'$'}{it.name}, URL: ${'$'}{it.url}")
-                      }
-                  }
-              }
-          }
+    }
+}
     """
         )
 
@@ -70,7 +63,7 @@ class MyPluginIntegrationTest {
             .withPluginClasspath()
             .build()
 
-        assert(result.output.contains("Repo: $repoId, URL: $repoUrl"))
+        assert(result.output.contains("Repo: myRepo, URL: http://localhost"))
     }
 
     @Test
@@ -80,27 +73,27 @@ class MyPluginIntegrationTest {
         settingsFile.writeText("rootProject.name = \"my-plugin-test\"")
         buildFile.writeText(
             """
-    plugins {
-        id("project-setup-gradle-plugin")
-    }
-    
-    myProject {
-        repos.set(mapOf("$repoId" to "http://localhost"))
-    }
- 
-    dependencies {
-       compileOnly("some.library:to.download:1.0")
-    }
-    
-    tasks.create("printRepos") {
-        doLast {
-          repositories.forEach {
-              if (it is MavenArtifactRepository) {
-                  println("Repo: ${'$'}{it.name}, URL: ${'$'}{it.url}")
-              }
-          }
+plugins {
+    id("project-setup-gradle-plugin")
+}
+
+myProject {
+    repos.set(mapOf("$repoId" to "http://localhost"))
+}
+
+dependencies {
+   compileOnly("some.library:to.download:1.0")
+}
+
+tasks.create("printRepos") {
+    doLast {
+        repositories.forEach {
+            if (it is MavenArtifactRepository) {
+                println("Repo: ${'$'}{it.name}, URL: ${'$'}{it.url}")
+            }
         }
     }
+}
 """
         )
 
@@ -120,15 +113,15 @@ class MyPluginIntegrationTest {
         settingsFile.writeText("rootProject.name = \"my-plugin-test\"")
         buildFile.writeText(
             """
-    plugins {
-        id("project-setup-gradle-plugin")
+plugins {
+    id("project-setup-gradle-plugin")
+}
+
+tasks.create("hello") {
+    doLast {
+      println("Hello")
     }
-    
-    tasks.create("hello") {
-        doLast {
-          println("Hello")
-        }
-    }
+}
 """
         )
 
@@ -159,30 +152,30 @@ class MyPluginIntegrationTest {
         settingsFile.writeText("rootProject.name = \"my-plugin-test\"")
         buildFile.writeText(
             """
-    plugins {
-        id("project-setup-gradle-plugin")
+plugins {
+    id("project-setup-gradle-plugin")
+}
+
+myProject {
+    repos.set(mapOf("$repoId" to "$repoUrl"))
+}
+
+repositories {
+    maven {
+        name = "Maven2"
+        url = uri("http://localhost:3000")
     }
-    
-    myProject {
-        repos.set(mapOf("$repoId" to "$repoUrl"))
-    }
-    
-    repositories {
-        maven {
-            name = "Maven2"
-            url = uri("http://localhost:3000")
-        }
-    }
-    
-    tasks.create("printRepos") {
-        doLast {
-            repositories.forEach {
-                if (it is MavenArtifactRepository) {
-                    println("Repo: ${'$'}{it.name}, URL: ${'$'}{it.url}")
-                }
+}
+
+tasks.create("printRepos") {
+    doLast {
+        repositories.forEach {
+            if (it is MavenArtifactRepository) {
+                println("Repo: ${'$'}{it.name}, URL: ${'$'}{it.url}")
             }
         }
     }
+}
 """
         )
 
