@@ -123,20 +123,26 @@ class MyPluginIntegrationTest {
     plugins {
         id("project-setup-gradle-plugin")
     }
+    
+    tasks.create("hello") {
+        doLast {
+          println("Hello")
+        }
+    }
 """
         )
 
         val result = GradleRunner.create()
             .withProjectDir(testProjectDir)
-            .withArguments("myTask")
+            .withArguments("hello")
             .withPluginClasspath()
             .build()
 
-        val myTaskResult = result.task(":myTask")
+        val myTaskResult = result.task(":hello")
         assertNotNull(myTaskResult)
         assertEquals(TaskOutcome.SUCCESS, myTaskResult.outcome)
 
-        assertTrue(result.output.contains("Hello from MyPlugin!"), "Output should contain 'Hello from MyPlugin!'")
+        assertTrue(result.output.contains("Hello"), "Output should contain 'Hello'")
     }
 
     @Test

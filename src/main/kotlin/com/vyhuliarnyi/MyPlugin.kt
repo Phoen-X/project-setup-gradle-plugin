@@ -16,7 +16,6 @@ class MyPlugin : Plugin<Project> {
         applyPlugins(project)
         val myProjectExtension = addCustomExtension(project)
         configureReposAfterEvaluation(project, myProjectExtension)
-        registerMyTask(project)
     }
 
     private fun applyPlugins(project: Project) {
@@ -37,30 +36,21 @@ class MyPlugin : Plugin<Project> {
         }
     }
 
-    private fun configureMavenRepo(project: Project, id: String, url: Any) {
+    private fun configureMavenRepo(project: Project, id: String, url: String) {
         project.repositories.maven {
             name = id
-            setUrl(url)
+            setUrl(project.uri(url))
             credentials {
-                username = project.findProperty("${id}Username") as String?
-                password = project.findProperty("${id}Password") as String?
-
-                if (username.isNullOrEmpty()) {
-                    throw GradleException("\"${id}Username\" is not available. Please define it in `gradle.properties` file")
-                }
-
-                if (username.isNullOrEmpty()) {
-                    throw GradleException("\"${id}Password\" is not available. Please define it in `gradle.properties` file")
-                }
+                username = findProperty(project, id, "Username")
+                password = findProperty(project, id, "Password")
             }
         }
     }
 
-    private fun registerMyTask(project: Project) {
-        project.tasks.register("myTask") {
-            doLast {
-                println("Hello from MyPlugin!")
-            }
-        }
+    private fun findProperty(project: Project, id: String, propertyName: String): String {
+        val fullPropertyName = "$id$propertyName"
+        return project.findProperty(fullPropertyName) as? String
+            ?: throw GradleException("\"$fullPropertyName\" is not available. Please define it in `gradle.properties` file")
     }
+
 }
