@@ -1,0 +1,15 @@
+plugins {
+    id("project-setup-gradle-plugin")
+}
+
+//%CONTENT%
+
+tasks.create("printRepos") {
+    doLast {
+        repositories.forEach {
+            if (it is MavenArtifactRepository) {
+                println("Repo: ${it.name}, URL: ${it.url}")
+            }
+        }
+    }
+}

@@ -23,38 +23,27 @@ class MyPluginIntegrationTest {
         settingsFile = File(testProjectDir, "settings.gradle.kts")
         buildFile = File(testProjectDir, "build.gradle.kts")
         propertiesFile = File(testProjectDir, "gradle.properties")
+
+        settingsFile.writeText("rootProject.name = \"my-plugin-test\"")
     }
 
     @Test
     fun `plugin configures repositories`() {
         propertiesFile.writeText(
             """
-        ${"myRepoUsername"}=${"user"}
-        ${"myRepoPassword"}=${"pass"}
-    """
+                myRepoUsername=user
+                myRepoPassword=pass
+                """.trimIndent()
         )
 
-        settingsFile.writeText("rootProject.name = \"my-plugin-test\"")
         buildFile.writeText(
-            """
-plugins {
-    id("project-setup-gradle-plugin")
-}
-
-myProject {
-    repos.set(mapOf("myRepo" to "http://localhost"))
-}
-
-tasks.create("printRepos") {
-    doLast {
-        repositories.forEach {
-            if (it is MavenArtifactRepository) {
-                println("Repo: ${'$'}{it.name}, URL: ${'$'}{it.url}")
-            }
-        }
-    }
-}
-    """
+            scriptContents(
+                adjustment = """
+                    myProject {
+                        repos.set(mapOf("myRepo" to "http://localhost"))
+                    }                
+            """.trimIndent()
+            )
         )
 
         val result = GradleRunner.create()
@@ -63,38 +52,21 @@ tasks.create("printRepos") {
             .withPluginClasspath()
             .build()
 
-        assert(result.output.contains("Repo: myRepo, URL: http://localhost"))
+        assertTrue(result.output.contains("Repo: myRepo, URL: http://localhost"))
     }
 
     @Test
     fun `properties are not set`() {
         val repoId = "myRepo"
-
-        settingsFile.writeText("rootProject.name = \"my-plugin-test\"")
+        propertiesFile.writeText("${repoId}Password=some_pass")
         buildFile.writeText(
-            """
-plugins {
-    id("project-setup-gradle-plugin")
-}
-
-myProject {
-    repos.set(mapOf("$repoId" to "http://localhost"))
-}
-
-dependencies {
-   compileOnly("some.library:to.download:1.0")
-}
-
-tasks.create("printRepos") {
-    doLast {
-        repositories.forEach {
-            if (it is MavenArtifactRepository) {
-                println("Repo: ${'$'}{it.name}, URL: ${'$'}{it.url}")
-            }
-        }
-    }
-}
-"""
+            scriptContents(
+                adjustment = """
+                    myProject {
+                        repo("$repoId", "http://localhost")
+                    }
+                    """.trimIndent()
+            )
         )
 
         val result = GradleRunner.create()
@@ -103,26 +75,23 @@ tasks.create("printRepos") {
             .withPluginClasspath()
             .buildAndFail()
 
-        assertTrue(
-            result.output.contains("\"${repoId}Username\" is not available")
-        )
+        assertTrue(result.output.contains("\"${repoId}Username\" is not available"))
     }
 
     @Test
     fun `repos block is not defined`() {
-        settingsFile.writeText("rootProject.name = \"my-plugin-test\"")
         buildFile.writeText(
             """
-plugins {
-    id("project-setup-gradle-plugin")
-}
-
-tasks.create("hello") {
-    doLast {
-      println("Hello")
-    }
-}
-"""
+                plugins {
+                    id("project-setup-gradle-plugin")
+                }
+                
+                tasks.create("hello") {
+                    doLast {
+                        println("Hello")
+                    }
+                }
+                """.trimIndent()
         )
 
         val result = GradleRunner.create()
@@ -144,39 +113,27 @@ tasks.create("hello") {
         val repoUrl = "http://localhost"
         propertiesFile.writeText(
             """
-        ${repoId}Username=user
-        ${repoId}Password=pass
-    """
+                ${repoId}Username=user
+                ${repoId}Password=pass
+                """.trimIndent()
         )
 
-        settingsFile.writeText("rootProject.name = \"my-plugin-test\"")
         buildFile.writeText(
-            """
-plugins {
-    id("project-setup-gradle-plugin")
-}
-
-myProject {
-    repos.set(mapOf("$repoId" to "$repoUrl"))
-}
-
-repositories {
-    maven {
-        name = "Maven2"
-        url = uri("http://localhost:3000")
-    }
-}
-
-tasks.create("printRepos") {
-    doLast {
-        repositories.forEach {
-            if (it is MavenArtifactRepository) {
-                println("Repo: ${'$'}{it.name}, URL: ${'$'}{it.url}")
-            }
-        }
-    }
-}
-"""
+            scriptContents(
+                adjustment =
+                """
+                    myProject {
+                        repo("$repoId", "$repoUrl")
+                    }
+                    
+                    repositories {
+                        maven {
+                            name = "Maven2"
+                            url = uri("http://localhost:3000")
+                        }
+                    }
+                """.trimIndent()
+            )
         )
 
         val result = GradleRunner.create()
@@ -191,4 +148,12 @@ tasks.create("printRepos") {
         val expectedOutput = "Repo: Maven2, URL: http://localhost:3000"
         assertTrue(result.output.contains(expectedOutput), "Output should contain '$expectedOutput'")
     }
+
+    private fun scriptContents(
+        path: String = "scripts/successful_config/build.gradle.kts.template",
+        adjustment: String
+    ) =
+        this::class.java.classLoader.getResource(path)!!
+            .readText()
+            .replace("//%CONTENT%", adjustment)
 }

@@ -3,34 +3,36 @@ package com.vyhuliarnyi
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.provider.MapProperty
+import org.gradle.api.plugins.JavaLibraryPlugin
+import org.gradle.api.plugins.quality.CheckstylePlugin
 import org.gradle.kotlin.dsl.create
+import java.util.*
 
-open class MyProjectExtension(project: Project) {
-    val repos: MapProperty<String, String> = project.objects.mapProperty(String::class.java, String::class.java)
+data class Repo(val id: String, val url: String)
+
+open class MyProjectExtension {
+    val repos = mutableListOf<Repo>()
+
+    // method to create and add repos with auto-generated id
+    fun repo(url: String) {
+        val id = url.split("/").joinToString("") { it.replaceFirstChar { s -> if (s.isLowerCase()) s.titlecase(Locale.ENGLISH) else s.toString() } }
+        repos.add(Repo(id, url))
+    }
+
+    // method to create and add repos with provided id
+    fun repo(id: String, url: String) {
+        repos.add(Repo(id, url))
+    }
 }
 
-@Suppress("unused")
 class MyPlugin : Plugin<Project> {
     override fun apply(project: Project) {
-        applyPlugins(project)
-        val myProjectExtension = addCustomExtension(project)
-        configureReposAfterEvaluation(project, myProjectExtension)
-    }
+        project.plugins.apply(JavaLibraryPlugin::class.java)
+        project.plugins.apply(CheckstylePlugin::class.java)
+        val myProjectExtension = project.extensions.create<MyProjectExtension>("myProject")
 
-    private fun applyPlugins(project: Project) {
-        with(project.pluginManager) {
-            apply("java-library")
-            apply("jacoco")
-        }
-    }
-
-    private fun addCustomExtension(project: Project): MyProjectExtension =
-        project.extensions.create<MyProjectExtension>("myProject", project)
-
-    private fun configureReposAfterEvaluation(project: Project, myProjectExtension: MyProjectExtension) {
         project.afterEvaluate {
-            myProjectExtension.repos.orNull?.forEach { (id, url) ->
+            myProjectExtension.repos.forEach { (id, url) ->
                 configureMavenRepo(project, id, url)
             }
         }
