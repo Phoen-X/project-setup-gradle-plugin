@@ -40,7 +40,7 @@ class MyPluginIntegrationTest {
             scriptContents(
                 adjustment = """
                     myProject {
-                        repos.set(mapOf("myRepo" to "http://localhost"))
+                        repo("myRepo", "http://localhost")
                     }                
             """.trimIndent()
             )
